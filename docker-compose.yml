@@ -1,0 +1,87 @@
+# Confidential chat stack — runs entirely inside the GCP Confidential VM (AMD SEV-SNP TEE).
+#   llama.cpp   — CPU inference, OpenAI-compatible API, API-key protected
+#   open-webui  — frontend WITH built-in auth + conversation history (local DB on the VM)
+#   caddy       — public HTTPS (auto Let's Encrypt) in front of Open WebUI
+#
+# Everything (accounts, chat history, model) stays on the VM. Only :80/:443 are exposed.
+# Usage:  cp .env.example .env  &&  edit .env  &&  docker compose up -d
+
+services:
+  llama:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    container_name: llama
+    restart: unless-stopped
+    command:
+      - "-hf"
+      - "${MODEL_HF}"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8000"
+      - "-c"
+      - "8192"
+      - "-t"
+      - "8"
+      - "--jinja"
+      - "--api-key"
+      - "${LLAMA_API_KEY}"
+    volumes:
+      - llama-cache:/root/.cache/llama.cpp
+    ports:
+      - "127.0.0.1:8000:8000" # local debugging only
+    networks: [ai]
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    environment:
+      WEBUI_AUTH: "True" # real per-user accounts
+      ENABLE_SIGNUP: "${ENABLE_SIGNUP}" # allow new signups (first user = admin)
+      DEFAULT_USER_ROLE: "${DEFAULT_USER_ROLE:-pending}" # pending = admin approves; user = auto-approve
+      WEBUI_URL: "https://${PUBLIC_HOST}"
+      WEBUI_SECRET_KEY: "${WEBUI_SECRET_KEY}"
+      OPENAI_API_BASE_URL: "http://llama:8000/v1"
+      OPENAI_API_KEY: "${LLAMA_API_KEY}"
+      ENABLE_OLLAMA_API: "False"
+    volumes:
+      - open-webui:/app/backend/data # accounts + conversations persist here
+    ports:
+      - "127.0.0.1:8080:8080" # local debugging only
+    depends_on: [llama]
+    networks: [ai]
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    command: ["caddy", "reverse-proxy", "--from", "${PUBLIC_HOST}", "--to", "open-webui:8080"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [open-webui]
+    networks: [ai]
+
+# Reuse the volumes/network already created on the VM so existing data + the
+# downloaded model + the TLS cert are preserved.
+networks:
+  ai:
+    external: true
+    name: ai
+
+volumes:
+  llama-cache:
+    external: true
+    name: llama-cache
+  open-webui:
+    external: true
+    name: open-webui
+  caddy-data:
+    external: true
+    name: caddy-data
+  caddy-config:
+    external: true
+    name: caddy-config
