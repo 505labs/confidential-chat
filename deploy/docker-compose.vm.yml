@@ -1,0 +1,73 @@
+# VM stack for Confidential Chat — runs entirely inside the SEV-SNP TEE.
+#   llama  — CPU inference (OpenAI-compatible, API-key protected), TEE-internal only
+#   app    — the custom Next.js chat UI, pinned to a specific GHCR image DIGEST
+#   caddy  — public HTTPS (auto Let's Encrypt via sslip.io) in front of the app
+#
+# All values come from the .env that deploy/deploy-app.sh writes next to this file.
+# Unlike the old stack, volumes/network are created by compose (no pre-seeding).
+
+services:
+  llama:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    container_name: llama
+    restart: unless-stopped
+    command:
+      - "-hf"
+      - "${MODEL_HF}"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8000"
+      - "-c"
+      - "8192"
+      - "-t"
+      - "8"
+      - "--jinja"
+      - "--api-key"
+      - "${LLAMA_API_KEY}"
+    volumes:
+      - llama-cache:/root/.cache/llama.cpp
+    networks: [ai]
+
+  app:
+    image: ${APP_IMAGE} # ghcr.io/505labs/confidential-chat@sha256:<digest>
+    container_name: app
+    restart: unless-stopped
+    environment:
+      AUTH_SECRET: "${AUTH_SECRET}"
+      AUTH_GOOGLE_ID: "${AUTH_GOOGLE_ID}"
+      AUTH_GOOGLE_SECRET: "${AUTH_GOOGLE_SECRET}"
+      AUTH_TRUST_HOST: "true"
+      AUTH_URL: "https://${PUBLIC_HOST}"
+      LLAMA_BASE_URL: "http://llama:8000/v1"
+      LLAMA_API_KEY: "${LLAMA_API_KEY}"
+      DB_PATH: "/data/app.db"
+      # Deploy-time provenance: the running image's own digest, shown in the footer.
+      IMAGE_DIGEST: "${IMAGE_DIGEST}"
+    volumes:
+      - app-data:/data # SQLite accounts + conversation history persist here
+    depends_on: [llama]
+    networks: [ai]
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    command: ["caddy", "reverse-proxy", "--from", "${PUBLIC_HOST}", "--to", "app:3000"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [app]
+    networks: [ai]
+
+networks:
+  ai:
+
+volumes:
+  llama-cache:
+  app-data:
+  caddy-data:
+  caddy-config:
