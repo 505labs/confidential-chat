@@ -41,18 +41,18 @@ digest* is what the running app shows in its footer — with each answer tagged 
 <!-- DIGEST:START -->
 <div align="center">
 
-<img src="https://img.shields.io/badge/image-awaiting%20first%20CI%20build-lightgrey?style=for-the-badge&logo=docker&logoColor=white" alt="image digest"/>
+[![image digest](https://img.shields.io/badge/image-sha256%3A20fb27b1ac4b612e9...-2ea44f?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/505labs/confidential-chat/pkgs/container/confidential-chat)
+[![source commit](https://img.shields.io/badge/commit-91e2b3e-24292e?style=for-the-badge&logo=github&logoColor=white)](https://github.com/505labs/confidential-chat/commit/91e2b3ef9e757690a94057461f3ace6dc49eebed)
 
 **🔒 Currently deployed in the TEE**
 
 ```
-image   ghcr.io/505labs/confidential-chat@sha256:… (populated by the build workflow)
-commit  … (populated by the build workflow)
-built   … (populated by the build workflow)
+image   ghcr.io/505labs/confidential-chat@sha256:20fb27b1ac4b612e9e34c047e3a105324295e2c4410f6206da1e1601f99ce022
+commit  91e2b3ef9e757690a94057461f3ace6dc49eebed
+built   2026-07-15T11:43:47Z  (UTC, by GitHub Actions)
 ```
 
-<sub>This block is rewritten automatically on every push to <code>main</code> by
-<code>.github/workflows/build.yml</code>.</sub>
+<sub>Pull this exact image: <code>docker pull ghcr.io/505labs/confidential-chat@sha256:20fb27b1ac4b612e9e34c047e3a105324295e2c4410f6206da1e1601f99ce022</code> — the digest above is what the running app shows in its footer.</sub>
 
 </div>
 <!-- DIGEST:END -->
