@@ -48,7 +48,7 @@ export default async function LoginPage() {
           </button>
         </form>
         <p className="mt-4 text-xs text-neutral-500">
-          Any Google account can request access. New accounts wait for admin approval.
+          Sign in with any Google account to start chatting.
         </p>
       </div>
     </main>

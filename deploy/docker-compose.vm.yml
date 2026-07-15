@@ -39,6 +39,8 @@ services:
       AUTH_GOOGLE_SECRET: "${AUTH_GOOGLE_SECRET}"
       AUTH_TRUST_HOST: "true"
       AUTH_URL: "https://${PUBLIC_HOST}"
+      # true = any signed-in Google user is active immediately (no approval gate)
+      AUTO_APPROVE: "${AUTO_APPROVE:-false}"
       LLAMA_BASE_URL: "http://llama:8000/v1"
       LLAMA_API_KEY: "${LLAMA_API_KEY}"
       DB_PATH: "/data/app.db"

@@ -104,13 +104,16 @@ export function upsertUser(u: {
   }
   const count = (db.prepare("SELECT COUNT(*) AS n FROM users").get() as { n: number }).n;
   const isFirst = count === 0;
+  // AUTO_APPROVE=true lets any signed-in Google user use the app immediately;
+  // otherwise new (non-first) users start 'pending' until an admin approves them.
+  const autoApprove = process.env.AUTO_APPROVE === "true";
   const row: UserRow = {
     id: u.id,
     email: u.email,
     name: u.name ?? null,
     image: u.image ?? null,
     role: isFirst ? "admin" : "user",
-    status: isFirst ? "active" : "pending",
+    status: isFirst || autoApprove ? "active" : "pending",
     created_at: Date.now(),
   };
   db.prepare(
