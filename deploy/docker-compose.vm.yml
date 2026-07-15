@@ -46,10 +46,20 @@ services:
       DB_PATH: "/data/app.db"
       # Deploy-time provenance: the running image's own digest, shown in the footer.
       IMAGE_DIGEST: "${IMAGE_DIGEST}"
+      ATTESTOR_URL: "http://attestor:9000"
     volumes:
       - app-data:/data # SQLite accounts + conversation history persist here
-    depends_on: [llama]
+    depends_on: [llama, attestor]
     networks: [ai]
+
+  # Only container with SEV-SNP device access; mints VCEK-signed attestation reports.
+  attestor:
+    image: ghcr.io/505labs/confidential-chat-attestor:latest
+    container_name: attestor
+    restart: unless-stopped
+    devices:
+      - "/dev/sev-guest:/dev/sev-guest"
+    networks: [ai] # internal only — never published
 
   caddy:
     image: caddy:latest

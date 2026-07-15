@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { Message, type ChatMsg } from "./Message";
+import { AttestButton } from "./AttestButton";
 import { buildInfo, shortSha } from "@/lib/build-info";
 
 type ChatSummary = { id: string; title: string };
@@ -182,6 +183,9 @@ export function Chat({
           <span className="ml-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
             code {shortSha(buildInfo.gitSha)}
           </span>
+          <div className="ml-auto">
+            <AttestButton />
+          </div>
         </header>
 
         <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-6">
