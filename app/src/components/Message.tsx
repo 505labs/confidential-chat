@@ -1,4 +1,5 @@
 import { HashBadge } from "./HashBadge";
+import { Markdown } from "./Markdown";
 
 export type ChatMsg = {
   id: string;
@@ -18,10 +19,14 @@ export function Message({ m, streaming }: { m: ChatMsg; streaming?: boolean }) {
             : "border border-white/10 bg-neutral-900/70 text-neutral-100"
         }`}
       >
-        <div className="whitespace-pre-wrap break-words">
-          {m.content}
-          {streaming && <span className="ml-0.5 inline-block animate-pulse">▋</span>}
-        </div>
+        {isUser ? (
+          <div className="whitespace-pre-wrap break-words">{m.content}</div>
+        ) : (
+          <div className="break-words">
+            <Markdown>{m.content}</Markdown>
+            {streaming && <span className="ml-0.5 inline-block animate-pulse">▋</span>}
+          </div>
+        )}
         {!isUser && !streaming && (
           <div className="mt-1 text-right">
             <HashBadge codeSha={m.code_sha} />
