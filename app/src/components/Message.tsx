@@ -1,11 +1,14 @@
 import { HashBadge } from "./HashBadge";
 import { Markdown } from "./Markdown";
 
+export type Source = { filename: string; page: number | null };
+
 export type ChatMsg = {
   id: string;
   role: "user" | "assistant";
   content: string;
   code_sha?: string | null;
+  sources?: Source[] | null;
 };
 
 export function Message({ m, streaming }: { m: ChatMsg; streaming?: boolean }) {
@@ -25,6 +28,23 @@ export function Message({ m, streaming }: { m: ChatMsg; streaming?: boolean }) {
           <div className="break-words">
             <Markdown>{m.content}</Markdown>
             {streaming && <span className="ml-0.5 inline-block animate-pulse">▋</span>}
+          </div>
+        )}
+        {!isUser && !streaming && m.sources && m.sources.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5 border-t border-white/10 pt-2">
+            <span className="text-[10px] uppercase tracking-wide text-neutral-500">
+              Sources
+            </span>
+            {m.sources.map((s, i) => (
+              <span
+                key={i}
+                className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-200"
+                title={s.filename}
+              >
+                📄 {s.filename}
+                {s.page ? ` · p.${s.page}` : ""}
+              </span>
+            ))}
           </div>
         )}
         {!isUser && !streaming && (

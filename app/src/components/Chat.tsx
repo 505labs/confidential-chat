@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
-import { Message, type ChatMsg } from "./Message";
+import { Message, type ChatMsg, type Source } from "./Message";
 import { AttestButton } from "./AttestButton";
+import { Files } from "./Files";
 import { buildInfo, shortSha } from "@/lib/build-info";
 
 type ChatSummary = { id: string; title: string };
@@ -21,6 +22,7 @@ export function Chat({
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,10 +64,14 @@ export function Chat({
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId: activeId, message: text }),
+        body: JSON.stringify({
+          chatId: activeId,
+          message: text,
+          documentIds: selectedDocs.size ? [...selectedDocs] : undefined,
+        }),
       });
       if (!res.ok || !res.body) {
-        patchLast(assistantMsg.id, `⚠️ ${await res.text()}`, null);
+        patchLast(assistantMsg.id, `⚠️ ${await res.text()}`, null, null);
         return;
       }
       const reader = res.body.getReader();
@@ -74,6 +80,7 @@ export function Chat({
       let newChatId: string | null = null;
       let acc = "";
       let codeSha: string | null = null;
+      let sources: Source[] | null = null;
 
       for (;;) {
         const { done, value } = await reader.read();
@@ -86,14 +93,15 @@ export function Chat({
           if (!t.startsWith("data:")) continue;
           const evt = JSON.parse(t.slice(5).trim());
           if (evt.chatId && !activeId) newChatId = evt.chatId;
+          if (evt.sources && evt.sources.length) sources = evt.sources as Source[];
           if (evt.token) {
             acc += evt.token;
-            patchLast(assistantMsg.id, acc, null);
+            patchLast(assistantMsg.id, acc, null, sources);
           }
           if (evt.done) codeSha = evt.codeSha ?? null;
         }
       }
-      patchLast(assistantMsg.id, acc, codeSha);
+      patchLast(assistantMsg.id, acc, codeSha, sources);
 
       // Register the freshly-created chat in the sidebar.
       if (newChatId) {
@@ -105,15 +113,22 @@ export function Chat({
         );
       }
     } catch (err) {
-      patchLast(assistantMsg.id, `⚠️ ${(err as Error).message}`, null);
+      patchLast(assistantMsg.id, `⚠️ ${(err as Error).message}`, null, null);
     } finally {
       setStreaming(false);
     }
   }
 
-  function patchLast(id: string, content: string, codeSha: string | null) {
+  function patchLast(
+    id: string,
+    content: string,
+    codeSha: string | null,
+    sources: Source[] | null,
+  ) {
     setMessages((m) =>
-      m.map((msg) => (msg.id === id ? { ...msg, content, code_sha: codeSha } : msg)),
+      m.map((msg) =>
+        msg.id === id ? { ...msg, content, code_sha: codeSha, sources } : msg,
+      ),
     );
   }
 
@@ -149,6 +164,7 @@ export function Chat({
             </div>
           ))}
         </div>
+        <Files selected={selectedDocs} onSelectionChange={setSelectedDocs} />
         <div className="border-t border-white/10 p-3 text-xs text-neutral-400">
           <div className="mb-2 flex items-center gap-2">
             {user.image ? (
@@ -209,6 +225,12 @@ export function Chat({
         </div>
 
         <div className="border-t border-white/10 p-3">
+          {selectedDocs.size > 0 && (
+            <div className="mx-auto mb-2 max-w-2xl text-[11px] text-emerald-300/80">
+              🔎 Answering using {selectedDocs.size} selected file
+              {selectedDocs.size > 1 ? "s" : ""}.
+            </div>
+          )}
           <div className="mx-auto flex max-w-2xl items-end gap-2">
             <textarea
               value={input}

@@ -9,18 +9,22 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
+    "@napi-rs/canvas": "^1.0.2",
     "better-sqlite3": "^11.8.1",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.47",
     "next": "15.5.20",
     "next-auth": "5.0.0-beta.25",
+    "pdfjs-dist": "^4.10.38",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-markdown": "^9.1.0",
     "rehype-highlight": "^7.0.2",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
-    "remark-math": "^6.0.0"
+    "remark-math": "^6.0.0",
+    "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.20",
