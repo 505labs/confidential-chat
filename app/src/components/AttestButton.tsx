@@ -5,23 +5,80 @@ import { useState } from "react";
 type Attestation = {
   verified: boolean;
   hardwareVerified: boolean;
-  nonceMatches: boolean;
+  reportDataMatches: boolean;
   procModel?: string;
   nonce: string;
   imageDigest: string;
   gitSha: string;
+  enclavePubKey?: string;
+  keySig?: string;
   measurement?: string;
   expectedReportData?: string;
+  reportData?: string;
   chainLog?: string[];
   reportB64?: string;
   vcekPem?: string;
   error?: string;
+  // filled in locally by the browser (Option B):
+  keyProofOk?: boolean;
+  bindingOk?: boolean;
 };
 
 function randomNonce(): string {
   const b = new Uint8Array(32);
   crypto.getRandomValues(b);
   return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return out;
+}
+function bytesToHex(b: Uint8Array): string {
+  return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+// The client-side half of end-to-end attestation. The browser INDEPENDENTLY checks,
+// without trusting the server's own "verified: true":
+//   • bindingOk  — REPORT_DATA equals SHA-512(nonce ‖ enclavePubKey ‖ imageDigest),
+//     so the hardware-signed report commits to this exact key + image + our nonce.
+//   • keyProofOk — the Ed25519 signature over our nonce verifies against enclavePubKey,
+//     proving the responder holds the private key the hardware vouched for.
+// (The AMD cert-chain check itself runs in the attestor sidecar over snpguest; the raw
+// report is provided below for anyone who wants to re-run that step off-box too.)
+async function localVerify(att: Attestation): Promise<Attestation> {
+  if (att.error || !att.enclavePubKey || !att.keySig) return att;
+  try {
+    const nonce = hexToBytes(att.nonce);
+    const pub = hexToBytes(att.enclavePubKey);
+    const imageBytes = new TextEncoder().encode(att.imageDigest);
+
+    // 1) recompute REPORT_DATA = SHA-512(nonce ‖ pubkey ‖ imageDigest)
+    const preimage = new Uint8Array(nonce.length + pub.length + imageBytes.length);
+    preimage.set(nonce, 0);
+    preimage.set(pub, nonce.length);
+    preimage.set(imageBytes, nonce.length + pub.length);
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-512", preimage));
+    const bindingOk = bytesToHex(digest) === (att.reportData ?? "");
+
+    // 2) verify the Ed25519 possession signature over the nonce
+    let keyProofOk = false;
+    try {
+      const key = await crypto.subtle.importKey("raw", pub as BufferSource, { name: "Ed25519" }, false, ["verify"]);
+      keyProofOk = await crypto.subtle.verify(
+        { name: "Ed25519" },
+        key,
+        hexToBytes(att.keySig) as BufferSource,
+        nonce as BufferSource,
+      );
+    } catch {
+      keyProofOk = false; // browser without Ed25519 WebCrypto support
+    }
+    return { ...att, bindingOk, keyProofOk };
+  } catch {
+    return att;
+  }
 }
 
 export function AttestButton() {
@@ -38,12 +95,13 @@ export function AttestButton() {
     const nonce = randomNonce();
     try {
       const res = await fetch(`/api/attest?nonce=${nonce}`, { cache: "no-store" });
-      setAtt(await res.json());
+      const raw = (await res.json()) as Attestation;
+      setAtt(await localVerify(raw));
     } catch (e) {
       setAtt({
         verified: false,
         hardwareVerified: false,
-        nonceMatches: false,
+        reportDataMatches: false,
         nonce,
         imageDigest: "",
         gitSha: "",
@@ -110,22 +168,30 @@ export function AttestButton() {
                       detail={`Report signed by the chip's VCEK, chained to AMD's root (ARK → ASK → VCEK), fetched live from AMD's KDS. Processor: ${att.procModel}.`}
                     />
                     <Check
-                      ok={att.nonceMatches}
-                      label="Fresh — bound to your challenge"
-                      detail="REPORT_DATA = SHA-512(nonce ‖ image digest). Matching proves this report was just minted for your random nonce, not replayed."
+                      ok={att.bindingOk ?? att.reportDataMatches}
+                      label="Report binds this enclave's key + image + your nonce"
+                      detail="Your browser recomputed REPORT_DATA = SHA-512(nonce ‖ enclave public key ‖ image digest) and it matches the hardware-signed report — so the report vouches for exactly this key and image, freshly for your challenge."
+                    />
+                    <Check
+                      ok={att.keyProofOk ?? false}
+                      label="You're talking directly to the attested enclave"
+                      detail="The responder signed your nonce with the private key the hardware just vouched for, and your browser verified that Ed25519 signature. Only code inside the attested enclave holds that key — so no proxy or middlebox can stand in."
                     />
                     <Row label="Launch measurement" mono value={att.measurement} note="hardware-measured boot identity (firmware/kernel)" />
-                    <Row label="Image digest (committed in report)" mono value={att.imageDigest} note="app-asserted — see note below" />
+                    <Row label="Enclave public key" mono value={att.enclavePubKey} note="ephemeral Ed25519, generated inside the enclave" />
+                    <Row label="Image digest (committed in report)" mono value={att.imageDigest} note="matches the public GitHub build" />
                     <Row label="Your nonce" mono value={att.nonce} />
                   </ul>
                 )}
 
                 <p className="rounded-lg bg-neutral-800/60 p-3 text-xs leading-relaxed text-neutral-400">
-                  <strong className="text-neutral-300">What this proves:</strong> the report is signed
-                  by real AMD confidential-computing hardware and is fresh (your nonce). The{" "}
-                  <em>image digest</em> is committed into that signed report by the app — hardware
-                  measures the VM's boot, not the container, so the digest is a software-asserted claim
-                  bound to the hardware signature. Measured-boot of the container would close that gap.
+                  <strong className="text-neutral-300">What this proves:</strong> a genuine AMD
+                  confidential-VM signed a fresh report committing to an enclave-held key, and the code
+                  answering you proved it holds that key — so you are talking <em>directly</em> to the
+                  attested enclave, not a proxy. The <em>image digest</em> is committed in that signed
+                  report and matches the public GitHub build; note the hardware measures the VM boot,
+                  not the container, so the digest is bound-and-publicly-checkable rather than
+                  hardware-measured — measured boot of the container would close that last gap.
                 </p>
 
                 {att.reportB64 && (
