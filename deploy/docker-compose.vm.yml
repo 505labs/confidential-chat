@@ -52,13 +52,20 @@ services:
     depends_on: [llama, attestor]
     networks: [ai]
 
-  # Only container with SEV-SNP device access; mints VCEK-signed attestation reports.
+  # Only container with TDX device access; mints Intel-signed TDX quotes and verifies
+  # them against Intel's root with self-hosted DCAP (no cloud provider in the chain).
+  # Needs /dev/tdx_guest and the host's configfs-tsm to request quotes.
   attestor:
     image: ghcr.io/505labs/confidential-chat-attestor:latest
     container_name: attestor
     restart: unless-stopped
+    privileged: true
     devices:
-      - "/dev/sev-guest:/dev/sev-guest"
+      - "/dev/tdx_guest:/dev/tdx_guest"
+    volumes:
+      - "/sys/kernel/config:/sys/kernel/config"
+    environment:
+      IMAGE_DIGEST: "${IMAGE_DIGEST}"
     networks: [ai] # internal only — never published
 
   caddy:
