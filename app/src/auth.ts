@@ -6,7 +6,15 @@ import { upsertUser, getUser } from "@/lib/db";
 // Any Google account may sign in; access is then gated on the user's `status`
 // (first user ever -> active admin; everyone else -> pending until approved).
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [Google],
+  providers: [
+    // Google's OIDC discovery advertises `authorization_response_iss_parameter_supported`,
+    // which makes @auth/core (v5 beta / oauth4webapi) *require* an `iss` param on the
+    // callback. Behind our Caddy reverse proxy that check fails with
+    //   CallbackRouteError: response parameter "iss" (issuer) missing
+    // even though PKCE round-trips fine. Pin the checks to PKCE + state (the CSRF
+    // protection we actually rely on) so the spurious iss enforcement is dropped.
+    Google({ checks: ["pkce", "state"] }),
+  ],
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   callbacks: {
