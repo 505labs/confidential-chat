@@ -6,18 +6,20 @@ type Attestation = {
   verified: boolean;
   hardwareVerified: boolean;
   reportDataMatches: boolean;
-  procModel?: string;
+  tee?: string;
+  provider?: string;
+  verifier?: string;
+  tcbStatus?: string;
   nonce: string;
   imageDigest: string;
   gitSha: string;
   enclavePubKey?: string;
   keySig?: string;
-  measurement?: string;
+  mrtd?: string;
+  rtmr?: string[];
   expectedReportData?: string;
   reportData?: string;
-  chainLog?: string[];
-  reportB64?: string;
-  vcekPem?: string;
+  quoteB64?: string;
   error?: string;
   // filled in locally by the browser (Option B):
   keyProofOk?: boolean;
@@ -45,8 +47,8 @@ function bytesToHex(b: Uint8Array): string {
 //     so the hardware-signed report commits to this exact key + image + our nonce.
 //   • keyProofOk — the Ed25519 signature over our nonce verifies against enclavePubKey,
 //     proving the responder holds the private key the hardware vouched for.
-// (The AMD cert-chain check itself runs in the attestor sidecar over snpguest; the raw
-// report is provided below for anyone who wants to re-run that step off-box too.)
+// (The Intel DCAP chain check runs in the attestor sidecar; the raw quote is
+// provided below for anyone who wants to re-run dcap-qvl off-box too.)
 async function localVerify(att: Attestation): Promise<Attestation> {
   if (att.error || !att.enclavePubKey || !att.keySig) return att;
   try {
@@ -117,7 +119,7 @@ export function AttestButton() {
       <button
         onClick={verify}
         className="flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20"
-        title="Prove this is running on genuine AMD SEV-SNP hardware"
+        title="Prove this is running in a genuine Intel TDX enclave"
       >
         🛡️ Verify hardware
       </button>
@@ -141,7 +143,7 @@ export function AttestButton() {
             {loading && (
               <div className="flex items-center gap-2 py-8 text-sm text-neutral-400">
                 <span className="h-3 w-3 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
-                Asking the AMD security processor for a signed report…
+                Requesting an Intel TDX quote and verifying it against Intel…
               </div>
             )}
 
@@ -164,37 +166,38 @@ export function AttestButton() {
                   <ul className="space-y-2">
                     <Check
                       ok={att.hardwareVerified}
-                      label="Signed by genuine AMD SEV-SNP silicon"
-                      detail={`Report signed by the chip's VCEK, chained to AMD's root (ARK → ASK → VCEK), fetched live from AMD's KDS. Processor: ${att.procModel}.`}
+                      label="Genuine Intel TDX — verified against Intel's root"
+                      detail={`The TDX quote's signature and PCK certificate chain were verified up to the Intel SGX Root CA using self-hosted DCAP — no cloud provider in the chain. Intel TCB status: ${att.tcbStatus ?? "?"}.`}
                     />
                     <Check
                       ok={att.bindingOk ?? att.reportDataMatches}
-                      label="Report binds this enclave's key + image + your nonce"
-                      detail="Your browser recomputed REPORT_DATA = SHA-512(nonce ‖ enclave public key ‖ image digest) and it matches the hardware-signed report — so the report vouches for exactly this key and image, freshly for your challenge."
+                      label="Quote binds this enclave's key + image + your nonce"
+                      detail="Your browser recomputed REPORT_DATA = SHA-512(nonce ‖ enclave public key ‖ image digest) and it matches the Intel-signed quote — so the quote vouches for exactly this key and image, freshly for your challenge."
                     />
                     <Check
                       ok={att.keyProofOk ?? false}
                       label="You're talking directly to the attested enclave"
-                      detail="The responder signed your nonce with the private key the hardware just vouched for, and your browser verified that Ed25519 signature. Only code inside the attested enclave holds that key — so no proxy or middlebox can stand in."
+                      detail="The responder signed your nonce with the private key the quote just vouched for, and your browser verified that Ed25519 signature. Only code inside the attested enclave holds that key — so no proxy or middlebox can stand in."
                     />
-                    <Row label="Launch measurement" mono value={att.measurement} note="hardware-measured boot identity (firmware/kernel)" />
+                    <Row label="Firmware measurement (MRTD)" mono value={att.mrtd} note="hardware-measured — note: this is Google's TDVF firmware" />
                     <Row label="Enclave public key" mono value={att.enclavePubKey} note="ephemeral Ed25519, generated inside the enclave" />
-                    <Row label="Image digest (committed in report)" mono value={att.imageDigest} note="matches the public GitHub build" />
+                    <Row label="Image digest (committed in quote)" mono value={att.imageDigest} note="matches the public GitHub build" />
                     <Row label="Your nonce" mono value={att.nonce} />
                   </ul>
                 )}
 
                 <p className="rounded-lg bg-neutral-800/60 p-3 text-xs leading-relaxed text-neutral-400">
-                  <strong className="text-neutral-300">What this proves:</strong> a genuine AMD
-                  confidential-VM signed a fresh report committing to an enclave-held key, and the code
-                  answering you proved it holds that key — so you are talking <em>directly</em> to the
-                  attested enclave, not a proxy. The <em>image digest</em> is committed in that signed
-                  report and matches the public GitHub build; note the hardware measures the VM boot,
-                  not the container, so the digest is bound-and-publicly-checkable rather than
-                  hardware-measured — measured boot of the container would close that last gap.
+                  <strong className="text-neutral-300">What this proves:</strong> a genuine Intel TDX
+                  confidential-VM produced a quote — verified against <em>Intel's</em> root with no cloud
+                  provider in the loop — committing to an enclave-held key, and the code answering you
+                  proved it holds that key, so you're talking <em>directly</em> to the attested enclave.
+                  The <em>image digest</em> is committed in that signed quote and matches the public
+                  GitHub build. Honest caveats: the digest rides in the quote's report-data (bound &amp;
+                  publicly checkable, not a hardware measurement register), and the firmware (MRTD) is
+                  Google's — so Google is the firmware author even though it is not the attestation signer.
                 </p>
 
-                {att.reportB64 && (
+                {att.quoteB64 && (
                   <div>
                     <button
                       onClick={() => setShowRaw((s) => !s)}
@@ -204,20 +207,16 @@ export function AttestButton() {
                     </button>
                     {showRaw && (
                       <div className="mt-2 space-y-2">
-                        {att.chainLog && (
-                          <pre className="overflow-x-auto rounded-lg bg-black/50 p-2 text-[10px] leading-snug text-emerald-300">
-                            {att.chainLog.join("\n")}
-                          </pre>
-                        )}
                         <p className="text-[11px] text-neutral-400">
-                          Re-verify off-box: base64-decode the report below to{" "}
-                          <code>report.bin</code>, then run{" "}
-                          <code>snpguest fetch vcek pem certs report.bin -p {att.procModel}</code> and{" "}
-                          <code>snpguest verify attestation certs report.bin -p {att.procModel}</code>.
+                          Re-verify off-box: base64-decode the quote below to{" "}
+                          <code>quote.dat</code>, then run{" "}
+                          <code>cargo install dcap-qvl-cli</code> and{" "}
+                          <code>dcap-qvl verify quote.dat</code> — it checks the chain to Intel&apos;s
+                          root without trusting us or Google.
                         </p>
                         <textarea
                           readOnly
-                          value={att.reportB64}
+                          value={att.quoteB64}
                           className="h-24 w-full resize-none rounded-lg bg-black/50 p-2 font-mono text-[10px] text-neutral-400"
                         />
                       </div>

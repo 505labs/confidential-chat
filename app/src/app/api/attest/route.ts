@@ -6,22 +6,23 @@ export const runtime = "nodejs";
 
 const ATTESTOR_URL = process.env.ATTESTOR_URL || "http://attestor:9000";
 
-// End-to-end ("Option B") remote attestation.
+// End-to-end ("Option B") remote attestation, on Intel TDX.
 //
 // The enclave holds an ephemeral Ed25519 key (see lib/enclave-key). We bind BOTH the
-// client's nonce AND the enclave public key into the 64-byte REPORT_DATA the AMD chip
-// signs:
+// client's nonce AND the enclave public key into the 64-byte REPORT_DATA of the Intel
+// TDX quote:
 //
 //     REPORT_DATA = SHA-512( nonce || enclavePubKey || imageDigest )
 //
 // and we also sign the client's nonce with the enclave private key. A client then
 // checks three things:
-//   1. the report's signature chains to AMD (genuine SEV-SNP hardware),
-//   2. REPORT_DATA == SHA-512(nonce || enclavePubKey || imageDigest)   (the report
+//   1. the TDX quote verifies against Intel's root (self-hosted DCAP, NO cloud provider),
+//   2. REPORT_DATA == SHA-512(nonce || enclavePubKey || imageDigest)   (the quote
 //      commits to THIS key, THIS image, and THIS challenge — freshness), and
 //   3. the returned Ed25519 signature over the nonce verifies against enclavePubKey
-//      (proof the responder actually holds the private key the hardware vouched for).
-// Passing all three ⇒ the client is talking directly to the attested enclave.
+//      (proof the responder actually holds the key the quote vouched for).
+// Passing all three ⇒ the client is talking directly to the attested TDX enclave,
+// with only Intel (and — honestly — Google's firmware in MRTD) in the trust base.
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const nonceHex = (url.searchParams.get("nonce") || randomBytes(32).toString("hex")).toLowerCase();
@@ -61,20 +62,22 @@ export async function GET(req: Request) {
 
   return Response.json({
     verified: att.verified === true && reportDataMatches,
-    hardwareVerified: att.verified === true, // AMD cert chain + report signature
-    reportDataMatches, // freshness + binding: report commits to nonce||key||image
-    procModel: att.procModel,
+    hardwareVerified: att.verified === true, // TDX quote verified against Intel's root
+    reportDataMatches, // freshness + binding: quote commits to nonce||key||image
+    tee: att.tee ?? "tdx",
+    provider: att.provider,          // "tdx_guest"
+    verifier: att.verifier,          // "self-hosted Intel DCAP — no cloud provider"
+    tcbStatus: att.tcbStatus,        // Intel TCB verdict (UpToDate, …)
     nonce: nonceHex,
-    imageDigest, // committed into the signed report
+    imageDigest, // committed into the signed quote
     gitSha: buildInfo.gitSha,
     // --- Option B: the enclave-key binding a client re-checks locally ---
     enclavePubKey: enclavePublicKeyHex, // 32-byte Ed25519 public key
     keySig, // Ed25519(nonce) by the enclave private key — proves possession
     expectedReportData: expected,
     reportData,
-    measurement: att.measurement, // launch identity (firmware/kernel), hardware-measured
-    chainLog: att.chainLog,
-    reportB64: att.reportB64,
-    vcekPem: att.vcekPem,
+    mrtd: att.mrtd,                  // firmware launch measurement (Google's TDVF)
+    rtmr: att.rtmr,                  // RTMR0–3 (boot chain measured; RTMR3 = boot value)
+    quoteB64: att.quoteB64,          // raw Intel TDX quote — re-verify off-box with dcap-qvl
   });
 }
