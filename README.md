@@ -4,7 +4,7 @@
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f766e,100:10b981&height=200&section=header&text=Confidential%20Chat&fontColor=ffffff&fontSize=54&fontAlignY=38&desc=a%20private%20LLM%20that%20runs%20inside%20a%20hardware-encrypted%20TEE&descSize=18&descAlignY=60" alt="Confidential Chat" width="100%"/>
 
 <a href="https://github.com/505labs/confidential-chat/actions/workflows/build.yml"><img src="https://github.com/505labs/confidential-chat/actions/workflows/build.yml/badge.svg" alt="build"/></a>
-<img src="https://img.shields.io/badge/TEE-AMD%20SEV--SNP-0f766e?logo=amd&logoColor=white" alt="tee"/>
+<img src="https://img.shields.io/badge/TEE-Intel%20TDX-0f766e?logo=intel&logoColor=white" alt="tee"/>
 <img src="https://img.shields.io/badge/model-Qwen2.5--1.5B-6d28d9" alt="model"/>
 <img src="https://img.shields.io/badge/auth-Google%20OAuth-ea4335?logo=google&logoColor=white" alt="auth"/>
 <img src="https://img.shields.io/badge/license-MIT-24292e" alt="license"/>
@@ -74,8 +74,8 @@ You don't have to trust a screenshot — pull the exact image yourself:
 
 ## ✨ What you get
 
-- 🔐 **Model runs in a TEE** — AMD SEV-SNP encrypts the VM's RAM in hardware; prompts and weights are protected *in use*, not just at rest.
-- 🧾 **Provable hardware** — one script produces + verifies an AMD SEV-SNP attestation report against AMD's root of trust (ARK → ASK → VCEK).
+- 🔐 **Model runs in a TEE** — Intel TDX encrypts the VM's RAM in hardware (with integrity protection); prompts and weights are protected *in use*, not just at rest.
+- 🧾 **Provable hardware** — the app produces + self-verifies an Intel TDX attestation quote against Intel's root of trust (TDREPORT → TD Quote → DCAP), with **no cloud provider in the verification chain**.
 - 🪪 **Google sign-in** — real per-user accounts via Google OAuth. First user becomes admin; new users wait for approval.
 - 💾 **Local chat history** — a lightweight **SQLite** DB on the VM. No external database, no data leaving the box.
 - 🧬 **Verifiable builds** — public CI → image digest → shown in-app + in this README; each reply carries the code commit hash.
@@ -84,12 +84,14 @@ You don't have to trust a screenshot — pull the exact image yourself:
 ## 🏛️ Architecture
 
 ```
-                          GCP Confidential VM  (AMD SEV-SNP TEE · RAM encrypted)
+                          GCP Confidential VM  (Intel TDX Trust Domain · RAM encrypted + integrity)
    Public user            ┌──────────────────────────────────────────────────────┐
       │  HTTPS :443        │  caddy ── reverse proxy, auto Let's Encrypt           │
       └───────────────────┼─▶ app  ── Next.js chat UI                             │
                           │      ├─ Google OAuth (Auth.js)                         │
                           │      ├─ SQLite  (accounts + conversation history)      │
+                          │      ├─ attestor ── TDX quote via configfs-tsm,        │
+                          │      │              self-hosted DCAP (dcap-qvl)         │
                           │      └─▶ llama.cpp ── CPU inference                    │
                           │               └─▶ Qwen2.5-1.5B (GGUF)                  │
                           └──────────────────────────────────────────────────────┘
@@ -102,7 +104,7 @@ Full design + decision log: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 ## 🚀 Quickstart
 
 ```bash
-# 1. Provision the SEV-SNP Confidential VM (static IP + firewall)
+# 1. Provision the Intel TDX Confidential VM (static IP + firewall)
 gcloud config set project YOUR_PROJECT_ID
 MACHINE=n2d-highcpu-8 ./infra/create-vm.sh        # prints the VM IP + PUBLIC_HOST
 
@@ -118,7 +120,7 @@ Then open `https://<PUBLIC_HOST>` — **the first account to sign in becomes adm
 Verify the TEE is genuine anytime:
 
 ```bash
-./infra/verify-attestation.sh        # fetches AMD's certs, checks the report chain
+./infra/verify-attestation.sh        # pulls a TDX quote, verifies it to Intel's root with dcap-qvl
 ```
 
 ## 🗂️ Repository layout
@@ -132,7 +134,7 @@ Verify the TEE is genuine anytime:
 | `deploy/docker-compose.vm.yml` | VM stack: llama.cpp + app (pinned by digest) + Caddy. |
 | `deploy/deploy-app.sh` | Resolve the GHCR digest, template compose, deploy to the VM. |
 | `infra/create-vm.sh` | Provision the Confidential VM + static IP + firewall. |
-| `infra/verify-attestation.sh` | Request + verify an AMD SEV-SNP attestation report. |
+| `infra/verify-attestation.sh` | Request a TDX quote + verify it to Intel's root (self-hosted DCAP). |
 | `docs/ARCHITECTURE.md` · `docs/DEPLOY.md` | Design/decision log · deploy runbook. |
 
 ## ⚙️ Configuration
@@ -151,9 +153,10 @@ The app reads its config from environment variables (see [`app/.env.example`](ap
 
 ## 🖥️ Want a GPU?
 
-Provision a **G4 / NVIDIA RTX PRO 6000** Confidential VM (SEV) for a larger model. The
-attestation flow is identical — set `PROC_MODEL=turin` (5th-gen EPYC) when running
-`verify-attestation.sh`.
+For a larger model, run on a **confidential-mode NVIDIA GPU** (H100/H200) alongside the
+TDX CPU Trust Domain — the GPU produces its own NVIDIA-signed attestation that composes
+with the TDX quote. The CPU attestation flow is unchanged; the demo here is CPU-only to
+keep costs down.
 
 ## 📜 License
 
