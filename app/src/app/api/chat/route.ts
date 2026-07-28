@@ -17,7 +17,7 @@ import { buildInfo } from "@/lib/build-info";
 export const runtime = "nodejs";
 
 const SYSTEM_PROMPT =
-  "You are Confidential Chat, a helpful assistant running entirely inside a hardware-encrypted TEE. Be concise and friendly.";
+  "You are Vero Chat, a helpful assistant running entirely inside a hardware-encrypted TEE. Be concise and friendly.";
 
 // Minimum retrieval similarity to bother injecting a chunk. bge cosine scores for
 // a genuinely relevant passage are typically > 0.4; below this it's mostly noise.

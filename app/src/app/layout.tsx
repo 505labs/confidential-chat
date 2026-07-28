@@ -3,7 +3,7 @@ import "./globals.css";
 import { BuildFooter } from "@/components/BuildFooter";
 
 export const metadata: Metadata = {
-  title: "Confidential Chat",
+  title: "Vero Chat",
   description: "Private LLM chat running inside a hardware-encrypted TEE.",
 };
 

@@ -11,7 +11,7 @@ export default async function LoginPage() {
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-2xl">
           🔒
         </div>
-        <h1 className="text-xl font-semibold">Confidential Chat</h1>
+        <h1 className="text-xl font-semibold">Vero Chat</h1>
         <p className="mt-2 text-sm text-neutral-400">
           A private assistant whose model runs inside a hardware-encrypted TEE.
         </p>

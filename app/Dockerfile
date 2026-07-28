@@ -1,4 +1,4 @@
-# Multi-stage build for the Confidential Chat custom frontend.
+# Multi-stage build for the Vero Chat custom frontend.
 # node:22-slim (glibc) so better-sqlite3 / onnxruntime-node / @napi-rs/canvas use
 # their prebuilt binaries — no compile toolchain needed.
 

@@ -1,4 +1,4 @@
-# VM stack for Confidential Chat — runs entirely inside the SEV-SNP TEE.
+# VM stack for Vero Chat — runs entirely inside the Intel TDX TEE.
 #   llama  — CPU inference (OpenAI-compatible, API-key protected), TEE-internal only
 #   app    — the custom Next.js chat UI, pinned to a specific GHCR image DIGEST
 #   caddy  — public HTTPS (auto Let's Encrypt via sslip.io) in front of the app

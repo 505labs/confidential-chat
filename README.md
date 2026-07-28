@@ -1,7 +1,7 @@
 <!-- Header ------------------------------------------------------------------->
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f766e,100:10b981&height=200&section=header&text=Confidential%20Chat&fontColor=ffffff&fontSize=54&fontAlignY=38&desc=a%20private%20LLM%20that%20runs%20inside%20a%20hardware-encrypted%20TEE&descSize=18&descAlignY=60" alt="Confidential Chat" width="100%"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f766e,100:10b981&height=200&section=header&text=Vero%20Chat&fontColor=ffffff&fontSize=54&fontAlignY=38&desc=a%20private%20LLM%20that%20runs%20inside%20a%20hardware-encrypted%20TEE&descSize=18&descAlignY=60" alt="Vero Chat" width="100%"/>
 
 <a href="https://github.com/505labs/confidential-chat/actions/workflows/build.yml"><img src="https://github.com/505labs/confidential-chat/actions/workflows/build.yml/badge.svg" alt="build"/></a>
 <img src="https://img.shields.io/badge/TEE-Intel%20TDX-0f766e?logo=intel&logoColor=white" alt="tee"/>
@@ -15,13 +15,13 @@
 
 <!-- ASCII banner --------------------------------------------------------------->
 ```
-   ██████╗ ██████╗ ███╗   ██╗███████╗██╗██████╗ ███████╗███╗   ██╗████████╗██╗ █████╗ ██╗
-  ██╔════╝██╔═══██╗████╗  ██║██╔════╝██║██╔══██╗██╔════╝████╗  ██║╚══██╔══╝██║██╔══██╗██║
-  ██║     ██║   ██║██╔██╗ ██║█████╗  ██║██║  ██║█████╗  ██╔██╗ ██║   ██║   ██║███████║██║
-  ██║     ██║   ██║██║╚██╗██║██╔══╝  ██║██║  ██║██╔══╝  ██║╚██╗██║   ██║   ██║██╔══██║██║
-  ╚██████╗╚██████╔╝██║ ╚████║██║     ██║██████╔╝███████╗██║ ╚████║   ██║   ██║██║  ██║███████╗
-   ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚══════╝
-        c  o  n  f  i  d  e  n  t  i  a  l     ·     c  h  a  t     🔒
+  ██╗   ██╗███████╗██████╗  ██████╗      ██████╗██╗  ██╗ █████╗ ████████╗
+  ██║   ██║██╔════╝██╔══██╗██╔═══██╗    ██╔════╝██║  ██║██╔══██╗╚══██╔══╝
+  ██║   ██║█████╗  ██████╔╝██║   ██║    ██║     ███████║███████║   ██║
+  ╚██╗ ██╔╝██╔══╝  ██╔══██╗██║   ██║    ██║     ██╔══██║██╔══██║   ██║
+   ╚████╔╝ ███████╗██║  ██║╚██████╔╝    ╚██████╗██║  ██║██║  ██║   ██║
+    ╚═══╝  ╚══════╝╚═╝  ╚═╝ ╚═════╝      ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝
+              v  e  r  o     ·     c  h  a  t     🔒
 ```
 
 > **A self-hosted, private ChatGPT-style app where the language model runs inside a

@@ -195,7 +195,7 @@ export function Chat({
       <section className="flex flex-1 flex-col">
         <header className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
           <span className="text-lg">🔒</span>
-          <h1 className="text-sm font-semibold">Confidential Chat</h1>
+          <h1 className="text-sm font-semibold">Vero Chat</h1>
           <span className="ml-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
             code {shortSha(buildInfo.gitSha)}
           </span>
@@ -242,7 +242,7 @@ export function Chat({
                 }
               }}
               rows={1}
-              placeholder="Message Confidential Chat…"
+              placeholder="Message Vero Chat…"
               className="max-h-40 flex-1 resize-none rounded-xl border border-white/10 bg-neutral-900/70 px-4 py-2.5 text-sm outline-none focus:border-emerald-500/50"
             />
             <button
