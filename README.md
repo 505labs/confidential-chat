@@ -31,6 +31,27 @@
 
 ---
 
+## 🎬 Demo
+
+Start a chat, upload a confidential contract, and ask about its terms — then click
+**Verify hardware** and watch the browser check an Intel-signed TDX attestation quote
+on the spot:
+
+<div align="center">
+
+<a href="docs/demo/vero-chat-demo.mp4"><img src="docs/demo/vero-chat-demo.gif" alt="Vero Chat demo — private chat with a live Intel TDX hardware-attestation check" width="640"/></a>
+
+<sub>▶️ <a href="docs/demo/vero-chat-demo.mp4">Watch the full-quality MP4</a> · recorded with <a href="https://github.com/505labs/confidential-chat/tree/demo-frontend-noauth/scripts/demo">scripts/demo</a></sub>
+
+</div>
+
+> The clip was captured on the auth-free **`demo-frontend-noauth`** branch (a
+> frontend-only build with authentication removed and the chat/attestation APIs
+> mocked, so the UI can be recorded without Google OAuth or the TEE model backend).
+> The attestation panel mirrors the real TDX output byte-for-byte.
+
+---
+
 ## 🔎 Verifiable by a hash, not by trust
 
 This is the headline feature. The app is built **in the open** by GitHub Actions and
