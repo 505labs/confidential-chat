@@ -8,7 +8,7 @@ import { Files } from "./Files";
 import { buildInfo, shortSha } from "@/lib/build-info";
 
 type ChatSummary = { id: string; title: string };
-type User = { name: string; email: string; image: string | null; role: "admin" | "user" };
+type User = { name: string; email: string; image: string | null };
 
 export function Chat({
   user,
@@ -177,11 +177,6 @@ export function Chat({
             )}
             <span className="truncate">{user.name}</span>
           </div>
-          {user.role === "admin" && (
-            <a href="/admin" className="block py-1 text-emerald-300 hover:underline">
-              Admin · pending users
-            </a>
-          )}
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="py-1 text-neutral-400 hover:text-neutral-200"

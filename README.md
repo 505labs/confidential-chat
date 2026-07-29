@@ -97,7 +97,7 @@ You don't have to trust a screenshot — pull the exact image yourself:
 
 - 🔐 **Model runs in a TEE** — Intel TDX encrypts the VM's RAM in hardware (with integrity protection); prompts and weights are protected *in use*, not just at rest.
 - 🧾 **Provable hardware** — the app produces + self-verifies an Intel TDX attestation quote against Intel's root of trust (TDREPORT → TD Quote → DCAP), with **no cloud provider in the verification chain**.
-- 🪪 **Google sign-in** — real per-user accounts via Google OAuth. First user becomes admin; new users wait for approval.
+- 🪪 **Google sign-in** — real per-user accounts via Google OAuth. Anyone with a Google account can sign in and use the app; API routes are per-IP rate-limited.
 - 💾 **Local chat history** — a lightweight **SQLite** DB on the VM. No external database, no data leaving the box.
 - 🧬 **Verifiable builds** — public CI → image digest → shown in-app + in this README; each reply carries the code commit hash.
 - 🌐 **Real HTTPS, no domain** — automatic Let's Encrypt certs via `sslip.io`.
@@ -136,7 +136,7 @@ MACHINE=n2d-highcpu-8 ./infra/create-vm.sh        # prints the VM IP + PUBLIC_HO
 PUBLIC_HOST=<ip-with-dashes>.sslip.io ./deploy/deploy-app.sh
 ```
 
-Then open `https://<PUBLIC_HOST>` — **the first account to sign in becomes admin.**
+Then open `https://<PUBLIC_HOST>` — **any Google account can sign in and start chatting.**
 
 Verify the TEE is genuine anytime:
 

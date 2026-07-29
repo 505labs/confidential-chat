@@ -1,10 +1,9 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import { upsertUser, getUser } from "@/lib/db";
+import { upsertUser } from "@/lib/db";
 
 // Auth.js v5. Google provider auto-reads AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET.
-// Any Google account may sign in; access is then gated on the user's `status`
-// (first user ever -> active admin; everyone else -> pending until approved).
+// Any Google account may sign in and use the app immediately (no approval gate).
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     // Google's OIDC discovery advertises `authorization_response_iss_parameter_supported`,
@@ -35,11 +34,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       const uid = token.uid as string | undefined;
       if (uid && session.user) {
-        // Read fresh from DB so admin approvals take effect without re-login.
-        const u = getUser(uid);
         session.user.id = uid;
-        session.user.role = u?.role ?? "user";
-        session.user.status = u?.status ?? "pending";
       }
       return session;
     },

@@ -114,8 +114,9 @@ export type MessageRow = {
 
 // --- Users -------------------------------------------------------------------
 
-// Upsert on sign-in. The very first user to ever sign in becomes an active admin;
-// everyone after starts 'pending' until an admin approves them.
+// Upsert on sign-in. Any Google account may sign in and use the app immediately —
+// there is no approval gate. (The role/status columns are kept for schema
+// compatibility with existing DBs but every user is created active.)
 export function upsertUser(u: {
   id: string;
   email: string;
@@ -134,18 +135,13 @@ export function upsertUser(u: {
     );
     return { ...existing, name: u.name ?? existing.name, image: u.image ?? existing.image };
   }
-  const count = (db.prepare("SELECT COUNT(*) AS n FROM users").get() as { n: number }).n;
-  const isFirst = count === 0;
-  // AUTO_APPROVE=true lets any signed-in Google user use the app immediately;
-  // otherwise new (non-first) users start 'pending' until an admin approves them.
-  const autoApprove = process.env.AUTO_APPROVE === "true";
   const row: UserRow = {
     id: u.id,
     email: u.email,
     name: u.name ?? null,
     image: u.image ?? null,
-    role: isFirst ? "admin" : "user",
-    status: isFirst || autoApprove ? "active" : "pending",
+    role: "user",
+    status: "active",
     created_at: Date.now(),
   };
   db.prepare(
@@ -157,16 +153,6 @@ export function upsertUser(u: {
 
 export function getUser(id: string): UserRow | undefined {
   return getDb().prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
-}
-
-export function listPendingUsers(): UserRow[] {
-  return getDb()
-    .prepare("SELECT * FROM users WHERE status = 'pending' ORDER BY created_at ASC")
-    .all() as UserRow[];
-}
-
-export function approveUser(id: string): void {
-  getDb().prepare("UPDATE users SET status = 'active' WHERE id = ?").run(id);
 }
 
 // --- Chats & messages --------------------------------------------------------

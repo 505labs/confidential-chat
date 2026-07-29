@@ -61,9 +61,7 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 });
   const user = getUser(session.user.id);
-  if (!user || user.status !== "active") {
-    return new Response("Account pending approval", { status: 403 });
-  }
+  if (!user) return new Response("Unauthorized", { status: 401 });
 
   const { chatId, message, documentIds } = (await req.json()) as {
     chatId?: string;
