@@ -62,18 +62,18 @@ digest* is what the running app shows in its footer — with each answer tagged 
 <!-- DIGEST:START -->
 <div align="center">
 
-[![image digest](https://img.shields.io/badge/image-sha256%3A3c0c2c71f437c1006...-2ea44f?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/505labs/confidential-chat/pkgs/container/confidential-chat)
-[![source commit](https://img.shields.io/badge/commit-ead6b9a-24292e?style=for-the-badge&logo=github&logoColor=white)](https://github.com/505labs/confidential-chat/commit/ead6b9a6c6187f2cd2db165a172e8bf2af49c12a)
+[![image digest](https://img.shields.io/badge/image-sha256%3A47abb4c9e266d1cdd...-2ea44f?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/505labs/confidential-chat/pkgs/container/confidential-chat)
+[![source commit](https://img.shields.io/badge/commit-9738e36-24292e?style=for-the-badge&logo=github&logoColor=white)](https://github.com/505labs/confidential-chat/commit/9738e36499c7453c9a14d78637272beac48b9263)
 
 **🔒 Currently deployed in the TEE**
 
 ```
-image   ghcr.io/505labs/confidential-chat@sha256:3c0c2c71f437c1006d8fa7aef3e4cec4048317a5152ed003a575bdff33142c08
-commit  ead6b9a6c6187f2cd2db165a172e8bf2af49c12a
-built   2026-07-28T12:06:38Z  (UTC, by GitHub Actions)
+image   ghcr.io/505labs/confidential-chat@sha256:47abb4c9e266d1cdd8b45ca956026a235ddba48d7d08d8fbb0eb3f003d6313e9
+commit  9738e36499c7453c9a14d78637272beac48b9263
+built   2026-07-29T11:05:03Z  (UTC, by GitHub Actions)
 ```
 
-<sub>Pull this exact image: <code>docker pull ghcr.io/505labs/confidential-chat@sha256:3c0c2c71f437c1006d8fa7aef3e4cec4048317a5152ed003a575bdff33142c08</code> — the digest above is what the running app shows in its footer.</sub>
+<sub>Pull this exact image: <code>docker pull ghcr.io/505labs/confidential-chat@sha256:47abb4c9e266d1cdd8b45ca956026a235ddba48d7d08d8fbb0eb3f003d6313e9</code> — the digest above is what the running app shows in its footer.</sub>
 
 </div>
 <!-- DIGEST:END -->
