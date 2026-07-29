@@ -1,9 +1,9 @@
-import { buildInfo, shortSha, shortDigest } from "@/lib/build-info";
+import { buildInfo, shortSha, shortDigest, buildRunUrl } from "@/lib/build-info";
 
 // Persistent provenance bar. Server component: reads IMAGE_DIGEST (deploy-time env)
 // that a client bundle can't see. This is the "what image is running" surface.
 export function BuildFooter() {
-  const buildUrl = `https://github.com/${buildInfo.repo}/actions?query=${buildInfo.gitSha}`;
+  const buildUrl = buildRunUrl();
   const pkgUrl = `https://github.com/${buildInfo.repo}/pkgs/container/confidential-chat`;
   return (
     <footer className="border-t border-white/10 bg-black/40 px-4 py-2 text-[11px] font-mono text-neutral-400 backdrop-blur">

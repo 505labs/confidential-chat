@@ -14,8 +14,14 @@ COPY . .
 # Build-time provenance — surfaced in the UI footer / per-message badge.
 ARG GIT_SHA=dev
 ARG BUILD_TIME=unknown
+ARG GITHUB_RUN_ID=
 ENV GIT_SHA=$GIT_SHA
 ENV BUILD_TIME=$BUILD_TIME
+ENV GITHUB_RUN_ID=$GITHUB_RUN_ID
+# Expose provenance to the client bundle too (per-message badge is a client
+# component). NEXT_PUBLIC_* is inlined by `next build`.
+ENV NEXT_PUBLIC_GIT_SHA=$GIT_SHA
+ENV NEXT_PUBLIC_GITHUB_RUN_ID=$GITHUB_RUN_ID
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
@@ -48,8 +54,10 @@ COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nextjs /app/public ./public
 ARG GIT_SHA=dev
 ARG BUILD_TIME=unknown
+ARG GITHUB_RUN_ID=
 ENV GIT_SHA=$GIT_SHA
 ENV BUILD_TIME=$BUILD_TIME
+ENV GITHUB_RUN_ID=$GITHUB_RUN_ID
 USER nextjs
 VOLUME /data
 EXPOSE 3000

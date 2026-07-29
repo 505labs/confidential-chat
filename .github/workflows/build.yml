@@ -56,6 +56,7 @@ jobs:
           build-args: |
             GIT_SHA=${{ github.sha }}
             BUILD_TIME=${{ steps.meta.outputs.built }}
+            GITHUB_RUN_ID=${{ github.run_id }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
