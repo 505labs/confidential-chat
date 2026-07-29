@@ -2,6 +2,22 @@
 
 import { useState } from "react";
 
+// Intel SGX Root CA — the fixed, self-signed P-256 key that is the ROOT of trust
+// for the whole DCAP chain. Every TDX quote's certificate chain terminates here, so
+// this is the key our verification ultimately checks against. It's Intel's global
+// root (the same for everyone), published at:
+//   https://certificates.trustedservices.intel.com/Intel_SGX_Provisioning_Certification_RootCA.pem
+const INTEL_ROOT = {
+  name: "Intel SGX Root CA",
+  curve: "P-256 (prime256v1)",
+  // uncompressed EC public point (0x04 ‖ X ‖ Y)
+  pubkey:
+    "040ba9c4c0c0c86193a3fe23d6b02cda10a8bbd4e88e48b4458561a36e70" +
+    "5525f567918e2edc88e40d860bd0cc4ee26aacc988e505a953558c453f6b0904ae7394",
+  certUrl:
+    "https://certificates.trustedservices.intel.com/Intel_SGX_Provisioning_Certification_RootCA.pem",
+};
+
 type Attestation = {
   verified: boolean;
   hardwareVerified: boolean;
@@ -88,15 +104,31 @@ export function AttestButton() {
   const [loading, setLoading] = useState(false);
   const [att, setAtt] = useState<Attestation | null>(null);
   const [showRaw, setShowRaw] = useState(false);
+  // Challenge step: let the user supply their own nonce (or randomize it).
+  const [nonce, setNonce] = useState<string>(randomNonce());
+  const [nonceErr, setNonceErr] = useState<string | null>(null);
+
+  function openPanel() {
+    setOpen(true);
+    setAtt(null);
+    setShowRaw(false);
+    setNonceErr(null);
+    setNonce(randomNonce());
+  }
 
   async function verify() {
-    setOpen(true);
+    const clean = nonce.trim().toLowerCase();
+    // Nonce: 1–64 bytes of hex (goes into the report-data the quote commits to).
+    if (!/^[0-9a-f]{2,128}$/.test(clean) || clean.length % 2 !== 0) {
+      setNonceErr("Nonce must be hex, an even number of characters, up to 64 bytes (128 hex chars).");
+      return;
+    }
+    setNonceErr(null);
     setLoading(true);
     setAtt(null);
     setShowRaw(false);
-    const nonce = randomNonce();
     try {
-      const res = await fetch(`/api/attest?nonce=${nonce}`, { cache: "no-store" });
+      const res = await fetch(`/api/attest?nonce=${clean}`, { cache: "no-store" });
       const raw = (await res.json()) as Attestation;
       setAtt(await localVerify(raw));
     } catch (e) {
@@ -104,7 +136,7 @@ export function AttestButton() {
         verified: false,
         hardwareVerified: false,
         reportDataMatches: false,
-        nonce,
+        nonce: clean,
         imageDigest: "",
         gitSha: "",
         error: (e as Error).message,
@@ -117,7 +149,7 @@ export function AttestButton() {
   return (
     <>
       <button
-        onClick={verify}
+        onClick={openPanel}
         className="flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20"
         title="Prove this is running in a genuine Intel TDX enclave"
       >
@@ -139,6 +171,40 @@ export function AttestButton() {
                 ✕
               </button>
             </div>
+
+            {/* Challenge step: choose a nonce, then attest. Shown until results arrive. */}
+            {!att && !loading && (
+              <div className="space-y-3 text-sm">
+                <p className="text-neutral-400">
+                  Pick a <strong className="text-neutral-200">challenge (nonce)</strong> — any hex value
+                  you choose. The enclave binds it into the hardware-signed quote, so a fresh, unique
+                  nonce proves the answer was made <em>now, for you</em> (not replayed). Leave the random
+                  one or paste your own.
+                </p>
+                <label className="block text-xs text-neutral-500">Nonce (hex, up to 64 bytes)</label>
+                <textarea
+                  value={nonce}
+                  onChange={(e) => setNonce(e.target.value)}
+                  spellCheck={false}
+                  className="h-16 w-full resize-none rounded-lg border border-white/10 bg-black/50 p-2 font-mono text-[11px] text-neutral-200 outline-none focus:border-emerald-500/50"
+                />
+                {nonceErr && <div className="text-[11px] text-red-300">{nonceErr}</div>}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={verify}
+                    className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-neutral-950 transition hover:bg-emerald-400"
+                  >
+                    Attest with this nonce
+                  </button>
+                  <button
+                    onClick={() => { setNonce(randomNonce()); setNonceErr(null); }}
+                    className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-neutral-300 hover:bg-white/5"
+                  >
+                    🎲 Randomize
+                  </button>
+                </div>
+              </div>
+            )}
 
             {loading && (
               <div className="flex items-center gap-2 py-8 text-sm text-neutral-400">
@@ -182,20 +248,43 @@ export function AttestButton() {
                     <Row label="Firmware measurement (MRTD)" mono value={att.mrtd} note="hardware-measured — note: this is Google's TDVF firmware" />
                     <Row label="Enclave public key" mono value={att.enclavePubKey} note="ephemeral Ed25519, generated inside the enclave" />
                     <Row label="Image digest (committed in quote)" mono value={att.imageDigest} note="matches the public GitHub build" />
-                    <Row label="Your nonce" mono value={att.nonce} />
+                    <Row label="Your nonce (the challenge you chose)" mono value={att.nonce} />
+                    <li>
+                      <div className="text-neutral-400">Intel root of trust (verifying key)</div>
+                      <div className="break-all font-mono text-[11px] text-neutral-200">{INTEL_ROOT.pubkey}</div>
+                      <div className="text-[11px] text-neutral-500">
+                        {INTEL_ROOT.name} · {INTEL_ROOT.curve} — the fixed key the quote&apos;s
+                        certificate chain terminates at.{" "}
+                        <a
+                          href={INTEL_ROOT.certUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-emerald-400 hover:underline"
+                        >
+                          Intel&apos;s published root cert ↗
+                        </a>
+                      </div>
+                    </li>
                   </ul>
                 )}
 
                 <p className="rounded-lg bg-neutral-800/60 p-3 text-xs leading-relaxed text-neutral-400">
                   <strong className="text-neutral-300">What this proves:</strong> a genuine Intel TDX
-                  confidential-VM produced a quote — verified against <em>Intel's</em> root with no cloud
+                  confidential-VM produced a quote — verified against <em>Intel&apos;s</em> root with no cloud
                   provider in the loop — committing to an enclave-held key, and the code answering you
-                  proved it holds that key, so you're talking <em>directly</em> to the attested enclave.
+                  proved it holds that key, so you&apos;re talking <em>directly</em> to the attested enclave.
                   The <em>image digest</em> is committed in that signed quote and matches the public
-                  GitHub build. Honest caveats: the digest rides in the quote's report-data (bound &amp;
+                  GitHub build. Honest caveats: the digest rides in the quote&apos;s report-data (bound &amp;
                   publicly checkable, not a hardware measurement register), and the firmware (MRTD) is
-                  Google's — so Google is the firmware author even though it is not the attestation signer.
+                  Google&apos;s — so Google is the firmware author even though it is not the attestation signer.
                 </p>
+
+                <button
+                  onClick={openPanel}
+                  className="text-xs text-emerald-300 hover:underline"
+                >
+                  ← Verify again with a different nonce
+                </button>
 
                 {att.quoteB64 && (
                   <div>
